@@ -1,4 +1,5 @@
 (library
  (public_name resp3)
- (name resp3))
+ (name resp3)
+ (libraries num angstrom))
 
