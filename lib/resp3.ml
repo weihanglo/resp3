@@ -77,6 +77,49 @@ module P = struct
     in
 
     let big_number = line >>| fun s -> BigNumber (Num.num_of_string s) in
+
+    (* TODO: use `many` with a fixed length *)
+    let array = line >>= fun _ -> many expr >>| fun l -> Array l in
+
+    (* TODO: use `many` with a fixed length *)
+    let list_to_map l =
+        List.fold_right
+          (fun (k, v) hash -> Hashtbl.add hash k v; hash) 
+          l
+          (Hashtbl.create ~random:true 4) (* TODO: create table with exact capacity *)
+    in
+
+    let map = line
+      >>= fun _ -> many (both expr expr) 
+      >>| fun l -> Map (list_to_map l)
+    in
+
+    (* TODO: Should use `many` with a fixed length *)
+    let set = line >>= fun _ -> many expr >>| fun l ->
+      Set (
+        List.fold_right
+          (fun x hash -> Hashtbl.add hash x (); hash) 
+          l
+          (Hashtbl.create ~random:true 4) (* TODO: create hash table with exact capacity *)
+      )
+    in
+
+    let attribute = line
+      >>= fun _ -> many (both expr expr) 
+      >>| fun l -> Attribute (list_to_map l)
+    in
+
+    (* TODO: use `many` with a fixed length *)
+    let push = line 
+      >>= fun _ -> both blob (many expr)
+      >>| fun (kind, messages) ->
+        let kind = match kind with 
+          | Blob bytes -> Bytes.to_string bytes 
+          | _ -> failwith "invalid push kind"
+        in
+        Push { kind = kind; messages = messages; }
+    in
+
     choice [
       char '$' *> blob;
       char '+' *> str;
@@ -88,6 +131,11 @@ module P = struct
       char '!' *> blob_error;
       char '=' *> verbatim_string;
       char '(' *> big_number;
+      char '*' *> array;
+      char '%' *> map;
+      char '~' *> set;
+      char '|' *> attribute;
+      char '>' *> push;
     ]
   )
 end
