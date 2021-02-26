@@ -145,3 +145,29 @@ let parse s : value =
   match parse_string ~consume:All P.expr s with
     | Ok v -> v
     | Error msg -> failwith msg
+
+let rec to_string value =
+  let arr_to_string ?(o = "[") ?(c = "]") l =
+    o ^ (List.map to_string l |> String.concat ", ") ^ c
+  in
+
+  let map_to_string ?(o = "{") ?(c = "}") m =
+    o ^ String.concat ", " (Hashtbl.fold (fun k v acc -> (to_string k ^ ": " ^ to_string v) :: acc) m []) ^ c
+  in
+
+  match value with
+    | Blob x -> Bytes.to_string x
+    | String x -> x
+    | Error x -> "ERR: " ^ x
+    | Number x -> Int64.to_string x
+    | Null -> "Null"
+    | Double x -> Float.to_string x
+    | Boolean x -> Bool.to_string x
+    | BlobError { code; message } -> "ERR " ^ code ^ ": " ^ message
+    | VerbatimString { format; text } -> format ^ ": " ^ text
+    | BigNumber x -> Num.string_of_num x
+    | Array l -> arr_to_string l
+    | Map m -> map_to_string m
+    | Set s -> "{" ^ String.concat ", " (Hashtbl.fold (fun k _ acc-> (to_string k) :: acc) s []) ^ "}"
+    | Attribute a -> map_to_string ~o:"<" ~c:">" a
+    | Push { kind; messages } -> kind ^ ": " ^ arr_to_string ~o:"{" ~c:"}" messages
